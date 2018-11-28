@@ -29,8 +29,8 @@ struct attributeStats
 	float spread;
 };
 void populateAttributes(vector<attributeStats> & attributes, const vector<vector<string>> & countryData); //works
-void populateHeader(vector<attributeWithRange> & header, vector<attributeStats> & attributes);
-void populateBody(vector<vector<bool>> & body, vector<attributeWithRange> & header, vector<vector<string>> & countryData);
+void populateHeader(vector<attributeWithRange> & header, vector<attributeStats> & attributes, const int divider); //works
+void populateBody(vector<vector<bool>> & body, vector<attributeWithRange> & header, vector<vector<string>> & countryData, const int divider); //works in a hacky way
 
 int main()
 {
@@ -52,8 +52,8 @@ int main()
 	vector<attributeWithRange> header;
 	vector<vector<bool>> body;
 	populateAttributes(attributes, countryData);
-	//populateHeader(header, attributes);
-	//populateBody(body, header, countryData);
+	populateHeader(header, attributes, divider);
+	populateBody(body, header, countryData, divider);
 
 
 
@@ -144,7 +144,50 @@ void populateAttributes(vector<attributeStats> & attributes, const vector<vector
 		//cout << "Name: " << stat.name << "   Min:" << stat.minVal << "   Max:" << stat.maxVal << "   Spread:" << stat.spread << endl;
 	}
 }
-void populateHeader(vector<attributeWithRange> & header, vector<attributeStats> & attributes)
-{}
-void populateBody(vector<vector<bool>> & body, vector<attributeWithRange> & header, vector<vector<string>> & countryData)
-{}
+void populateHeader(vector<attributeWithRange> & header, vector<attributeStats> & attributes, const int divider)
+{
+	for (int i = 0; i < attributes.size(); i++)
+	{
+		for (int d = 0; d < divider; d++)
+		{
+			attributeWithRange atr;
+			atr.name = attributes[i].name;
+			atr.lowerBound = attributes[i].minVal + (attributes[i].spread / divider * d);
+			atr.upperBound = atr.lowerBound + (attributes[i].spread / divider); //rounding error might be because of this
+			header.push_back(atr);
+			//debugging
+			cout << "Name: " << atr.name << "   Range: " << atr.lowerBound << " - " << atr.upperBound << endl;
+		}
+	}
+
+}
+void populateBody(vector<vector<bool>> & body, vector<attributeWithRange> & header, vector<vector<string>> & countryData, const int divider)
+{
+	for (int y = 1; y < countryData.size(); y++) //all records in database, start from 1 since 0 is header
+	{
+		vector<bool> tempVec;
+		int count = 0;
+		for (int x = 0; x < countryData[y].size(); x++) //horizontal size of original database
+		{
+			for (int z = 0; z < divider; z++) //how many divisions do we apply to our attributes
+			{
+				float num = stof(countryData[y][x]);
+				if (num >= header[x * divider + z].lowerBound && num <= header[x * divider + z].upperBound + 0.0001) //TODO, fix the bug with rounding or something 
+				{
+					tempVec.push_back(true);
+					count++;
+				}
+				else
+				{
+					//cout << num << " " << header[x * divider + z].lowerBound << " " << header[x * divider + z].upperBound << endl;
+
+					tempVec.push_back(false);
+				}
+				cout << tempVec[x * divider + z] << " ";
+			}
+		}
+		body.push_back(tempVec);
+		//cout << count; //for checking number of true values should be equal to number of attributes
+		cout << endl;
+	}
+}
