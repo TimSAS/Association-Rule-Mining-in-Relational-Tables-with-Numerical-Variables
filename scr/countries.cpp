@@ -67,7 +67,7 @@ int main()
 
 
 	//association rule mining algorithm:
-	const float minSupport = 0.3f; //% of the whole dataset
+	const float minSupport = 0.4f; //% of the whole dataset
 	const float minConfidence = 0.5f; //% of records that have X, that also have Y
 	vector<vector<int>> currentItemsets;
 	apriori(header, body, currentItemsets, minSupport, minConfidence, 0, countryData);
@@ -288,9 +288,7 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 	else if (counter == countryData.size() - 1) { cout << "Maximumum number of recursions reached" << endl; return; }
 	//else if (counter == 3) { cout << "Exited successfully on #th recursion" << endl; return; }
 
-	//prep for next "level" in recursion
-	//update counter:
-	counter++;
+
 	//prep our currentItemsets vector for next "run" (remove things that are bellow support & confidence) DONT forget about confidence, to do it later
 	vector<vector<int>> newCurrentItemsets;
 	for (int i = 0; i < currentItemsets.size(); i++)
@@ -343,7 +341,7 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 									cout << header[subsets[x][h]].name << " <" << header[subsets[x][h]].lowerBound << ", " << header[subsets[x][h]].upperBound << "> ";
 									if (subsets[x].size() > 1 && h != subsets[x].size() - 1) { cout << "&& "; }
 								}
-								cout << " with support of " << support << "% and confidence of " << confidence << "%" << endl;
+								cout << " with support of " << support << " and confidence of " << confidence << "" << endl;
 							}
 						}
 					}
@@ -351,6 +349,9 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 			}
 		}
 	}
+	//prep for next "level" in recursion
+	//update counter:
+	counter++;
 	cout << endl << endl;
 	apriori(header, body, newCurrentItemsets, minSupport, minConfidence, counter, countryData);
 }
