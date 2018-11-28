@@ -32,6 +32,9 @@ void populateAttributes(vector<attributeStats> & attributes, const vector<vector
 void populateHeader(vector<attributeWithRange> & header, vector<attributeStats> & attributes, const int divider); //works
 void populateBody(vector<vector<bool>> & body, vector<attributeWithRange> & header, vector<vector<string>> & countryData, const int divider); //works in a hacky way
 
+//association rule learning algorithm:
+void apriori(const vector<attributeWithRange> & header, const vector<vector<bool>> & body, const float minSupport, const float minConfidence);
+
 int main()
 {
 	//opening our file
@@ -42,7 +45,7 @@ int main()
 	//getting the data into a 2-dimentional vector:
 	vector< vector<string> > countryData;
 	populateVector(ourFile, countryData);
-	displayVector(countryData);
+	//displayVector(countryData);
 
 	//Mapping the Quantitative Associatin Rules Problem into the Boolean Association Rules Problem
 	//first row(first vector): set of <attribute, range>
@@ -58,8 +61,9 @@ int main()
 
 
 	//association rule mining algorithm:
-	const float minSupport = 0.4f;
-	const float minConfidence = 0.5f;
+	const float minSupport = 0.3f; //% of the whole dataset
+	const float minConfidence = 0.5f; //% of records that have X, that also have Y
+	apriori(header, body, minSupport, minConfidence);
 
 	//close file
 	closeFile(ourFile);
@@ -159,7 +163,7 @@ void populateHeader(vector<attributeWithRange> & header, vector<attributeStats> 
 			cout << "Name: " << atr.name << "   Range: " << atr.lowerBound << " - " << atr.upperBound << endl;
 		}
 	}
-
+	cout << endl << endl;
 }
 void populateBody(vector<vector<bool>> & body, vector<attributeWithRange> & header, vector<vector<string>> & countryData, const int divider)
 {
@@ -183,11 +187,32 @@ void populateBody(vector<vector<bool>> & body, vector<attributeWithRange> & head
 
 					tempVec.push_back(false);
 				}
-				cout << tempVec[x * divider + z] << " ";
+				//cout << tempVec[x * divider + z] << " ";
 			}
 		}
 		body.push_back(tempVec);
 		//cout << count; //for checking number of true values should be equal to number of attributes
-		cout << endl;
+		//cout << endl;
 	}
+}
+
+void apriori(const vector<attributeWithRange> & header, const vector<vector<bool>> & body, const float minSupport, const float minConfidence)
+{
+	//start with single itemsets of size 1 (only one attribute) 
+		//find support for them, and confidence?
+		//discard those that are lower than minSupport and confidence
+	//add one more item to itemsets that are still "in the game"
+		//find support for them and confidence
+		//discard those that are lower than minSupport and confidence
+	int populationSize = body.size();
+	for (int atr = 0; atr < header.size(); atr++)
+	{
+		int frq = 0;
+		for (int rec = 0; rec < populationSize; rec++)
+		{
+			if (body[rec][atr] == 1) { frq++; }
+		}
+		cout << header[atr].name << " " << header[atr].lowerBound << "-" << header[atr].upperBound << "   frq =" << frq << "   support = " << float(frq) / populationSize << endl;
+	}
+
 }
