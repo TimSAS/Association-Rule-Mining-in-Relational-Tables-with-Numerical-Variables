@@ -33,7 +33,7 @@ void populateHeader(vector<attributeWithRange> & header, vector<attributeStats> 
 void populateBody(vector<vector<bool>> & body, vector<attributeWithRange> & header, vector<vector<string>> & countryData, const int divider); //works in a hacky way
 
 //association rule learning algorithm:
-void apriori(const vector<attributeWithRange> & header, const vector<vector<bool>> & body, vector<vector<int>> & currentItemsets, const float minSupport, const float minConfidence, int counter);
+void apriori(const vector<attributeWithRange> & header, const vector<vector<bool>> & body, vector<vector<int>> & currentItemsets, const float minSupport, const float minConfidence, int counter, const vector<vector<string>> & countryData);
 void combinations(const vector<vector<int>> & inputVector, vector<int> & tempVector, int start, int end, int index, int combinationSize, vector<vector<int>> & newCombinations);
 
 int main()
@@ -51,7 +51,7 @@ int main()
 	//Mapping the Quantitative Associatin Rules Problem into the Boolean Association Rules Problem
 	//first row(first vector): set of <attribute, range>
 	//other rows(second vector): table of 0 or 1s
-	const int divider = 5; //in how many pieces to divide range of a certain attribute
+	const int divider = 10; //in how many pieces to divide range of a certain attribute
 	vector<attributeStats> attributes;
 	vector<attributeWithRange> header;
 	vector<vector<bool>> body;
@@ -65,7 +65,7 @@ int main()
 	const float minSupport = 0.3f; //% of the whole dataset
 	const float minConfidence = 0.5f; //% of records that have X, that also have Y
 	vector<vector<int>> currentItemsets;
-	apriori(header, body, currentItemsets, minSupport, minConfidence, 0);
+	apriori(header, body, currentItemsets, minSupport, minConfidence, 0, countryData);
 
 	//close file
 	closeFile(ourFile);
@@ -198,7 +198,7 @@ void populateBody(vector<vector<bool>> & body, vector<attributeWithRange> & head
 	}
 }
 
-void apriori(const vector<attributeWithRange> & header, const vector<vector<bool>> & body, vector<vector<int>> & currentItemsets, const float minSupport, const float minConfidence, int counter)
+void apriori(const vector<attributeWithRange> & header, const vector<vector<bool>> & body, vector<vector<int>> & currentItemsets, const float minSupport, const float minConfidence, int counter, const vector<vector<string>> & countryData)
 {
 	cout << "Level " << counter << endl;
 	int populationSize = body.size();
@@ -226,8 +226,30 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 
 		combinations(currentItemsets, tempVector, 0, currentItemsets.size() - 1, 0, counter + 1, newCombinations);
 		currentItemsets = newCombinations;
-
+		newCombinations.clear();
 		//what left: get rid of duplicates =)
+		for (int y = 0; y < currentItemsets.size(); y++)
+		{
+			for (int x = 0; x < currentItemsets[y].size(); x++)
+			{
+				if (x != currentItemsets[y].size() - 1)
+				{
+					if (currentItemsets[y][x] == currentItemsets[y][x + 1]) { //cout << "got rid of duplicate" << endl; 
+						break;
+					}
+				}
+				else
+				{
+					newCombinations.push_back(currentItemsets[y]);
+				}
+			}
+		}
+		currentItemsets = newCombinations;
+		if (currentItemsets.size() == 0)
+		{
+			cout << "No frequent itemsets left." << endl;
+			return;
+		}
 	}
 
 	//actual logic
@@ -249,14 +271,15 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 			if (currentItemsets[atr].size() > 1 && i != currentItemsets[atr].size() - 1) { cout << " && "; }
 		}
 		if (float(frq) / populationSize >= minSupport) { cout << "   frq =" << frq << "   support = " << float(frq) / populationSize << endl; }
+		//cout << "   frq =" << frq << "   support = " << float(frq) / populationSize << endl;
 		support.push_back(float(frq) / populationSize);
 	}
 	cout << endl;
 
 	//end conditions
-	if (counter == 2) { return; }
-	else if (currentItemsets.size() == 0) { return; }
-	else if (counter == header.size()) { return; }
+	if (currentItemsets.size() == 0) { cout << "No frequent itemsets left!" << endl; return; }
+	else if (counter == countryData.size() - 1) { cout << "Maximumum number of recursions reached" << endl; return; }
+	else if (counter == 3) { cout << "Exited successfully on #th recursion" << endl; return; }
 
 	//prep for next "level" in recursion
 	//update counter:
@@ -271,21 +294,20 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 		}
 	}
 
-	apriori(header, body, newCurrentItemsets, minSupport, minConfidence, counter);
+	apriori(header, body, newCurrentItemsets, minSupport, minConfidence, counter, countryData);
 }
 
 void combinations(const vector<vector<int>> & inputVector, vector<int> & tempVector, int start, int end, int index, int combinationSize, vector<vector<int>> & newCombinations)
 {
-	//what left: get rid of duplicates =)
 
 	//current combination is ready
 	if (index == combinationSize)
 	{
-		for (int i = 0; i < combinationSize; i++)
+		/*for (int i = 0; i < combinationSize; i++)
 		{
 			cout << tempVector[i] << " ";
 		}
-		cout << endl;
+		cout << endl;*/
 		newCombinations.push_back(tempVector);
 		return;
 	}
