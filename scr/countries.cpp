@@ -275,10 +275,10 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 		}
 		for (int i = 0; i < currentItemsets[atr].size(); i++) {
 			if (float(frq) / populationSize < minSupport) { continue; }
-			cout << header[currentItemsets[atr][i]].name << " " << header[currentItemsets[atr][i]].lowerBound << "-" << header[currentItemsets[atr][i]].upperBound << " ";
+			cout << header[currentItemsets[atr][i]].name << " <" << header[currentItemsets[atr][i]].lowerBound << ", " << header[currentItemsets[atr][i]].upperBound << ">  ";
 			if (currentItemsets[atr].size() > 1 && i != currentItemsets[atr].size() - 1) { cout << " && "; }
 		}
-		if (float(frq) / populationSize >= minSupport) { cout << "   frq =" << frq << "   support = " << float(frq) / populationSize << endl; }
+		if (float(frq) / populationSize >= minSupport) { cout << endl << "frq = " << frq << "   support = " << float(frq) / populationSize << endl; }
 		//cout << "   frq =" << frq << "   support = " << float(frq) / populationSize << endl;
 		support.push_back(float(frq) / populationSize);
 	}
@@ -301,7 +301,7 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 	cout << endl;
 	//association rule finding 
 	if (counter != 0) {
-		cout << "Association rules derived from frequent itemsets that also passed the confidence criteria:" << endl;
+		cout << "-----Association rules-----" << endl;
 		for (int y = 0; y < newCurrentItemsets.size(); y++) //for all frequent itemsets that satisfied the support criteria
 		{
 			vector<vector<int>> subsets;
@@ -341,7 +341,7 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 									cout << header[subsets[x][h]].name << " <" << header[subsets[x][h]].lowerBound << ", " << header[subsets[x][h]].upperBound << "> ";
 									if (subsets[x].size() > 1 && h != subsets[x].size() - 1) { cout << "&& "; }
 								}
-								cout << " with support of " << support << " and confidence of " << confidence << "" << endl;
+								cout << endl << "   with support of " << support << " and confidence of " << confidence << "" << endl;
 							}
 						}
 					}
