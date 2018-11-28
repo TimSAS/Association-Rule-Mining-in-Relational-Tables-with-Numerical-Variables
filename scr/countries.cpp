@@ -3,6 +3,7 @@
 #include <string>
 #include <fstream>
 #include <map>
+#include <math.h>
 
 using namespace std;
 
@@ -35,6 +36,10 @@ void populateBody(vector<vector<bool>> & body, vector<attributeWithRange> & head
 //association rule learning algorithm:
 void apriori(const vector<attributeWithRange> & header, const vector<vector<bool>> & body, vector<vector<int>> & currentItemsets, const float minSupport, const float minConfidence, int counter, const vector<vector<string>> & countryData);
 void combinations(const vector<vector<int>> & inputVector, vector<int> & tempVector, int start, int end, int index, int combinationSize, vector<vector<int>> & newCombinations);
+//for confidence calculations:"
+float sup(const vector<vector<bool>> & body, const vector<int> & itemset);
+void allSubsetsExceptEmpty(const vector<int> & itemset, vector<vector<int>> & subsets);
+
 
 int main()
 {
@@ -51,7 +56,7 @@ int main()
 	//Mapping the Quantitative Associatin Rules Problem into the Boolean Association Rules Problem
 	//first row(first vector): set of <attribute, range>
 	//other rows(second vector): table of 0 or 1s
-	const int divider = 10; //in how many pieces to divide range of a certain attribute
+	const int divider = 5; //in how many pieces to divide range of a certain attribute
 	vector<attributeStats> attributes;
 	vector<attributeWithRange> header;
 	vector<vector<bool>> body;
@@ -63,7 +68,7 @@ int main()
 
 	//association rule mining algorithm:
 	const float minSupport = 0.3f; //% of the whole dataset
-	const float minConfidence = 0.5f; //% of records that have X, that also have Y
+	const float minConfidence = 0.0f; //% of records that have X, that also have Y
 	vector<vector<int>> currentItemsets;
 	apriori(header, body, currentItemsets, minSupport, minConfidence, 0, countryData);
 
@@ -152,6 +157,7 @@ void populateAttributes(vector<attributeStats> & attributes, const vector<vector
 }
 void populateHeader(vector<attributeWithRange> & header, vector<attributeStats> & attributes, const int divider)
 {
+	cout << "Attributes, with divider of " << divider << ":" << endl;
 	for (int i = 0; i < attributes.size(); i++)
 	{
 		for (int d = 0; d < divider; d++)
@@ -201,9 +207,9 @@ void populateBody(vector<vector<bool>> & body, vector<attributeWithRange> & head
 void apriori(const vector<attributeWithRange> & header, const vector<vector<bool>> & body, vector<vector<int>> & currentItemsets, const float minSupport, const float minConfidence, int counter, const vector<vector<string>> & countryData)
 {
 	cout << "Level " << counter << endl;
+	cout << "-----Frequent itemsets that satisfy the support requirement of " << minSupport << "-----" << endl;
 	int populationSize = body.size();
 	vector<float> support;
-	vector<float> confidence;
 
 	if (counter == 0) //initial "fill-in" of currentItemsets vector
 	{
@@ -252,6 +258,8 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 		}
 	}
 
+
+
 	//actual logic
 	for (int atr = 0; atr < currentItemsets.size(); atr++)
 	{
@@ -274,12 +282,11 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 		//cout << "   frq =" << frq << "   support = " << float(frq) / populationSize << endl;
 		support.push_back(float(frq) / populationSize);
 	}
-	cout << endl;
 
 	//end conditions
 	if (currentItemsets.size() == 0) { cout << "No frequent itemsets left!" << endl; return; }
 	else if (counter == countryData.size() - 1) { cout << "Maximumum number of recursions reached" << endl; return; }
-	else if (counter == 3) { cout << "Exited successfully on #th recursion" << endl; return; }
+	//else if (counter == 3) { cout << "Exited successfully on #th recursion" << endl; return; }
 
 	//prep for next "level" in recursion
 	//update counter:
@@ -293,7 +300,58 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 			newCurrentItemsets.push_back(currentItemsets[i]);
 		}
 	}
-
+	cout << endl;
+	//association rule finding 
+	if (counter != 0) {
+		cout << "Association rules derived from frequent itemsets that also passed the confidence criteria:" << endl;
+		for (int y = 0; y < newCurrentItemsets.size(); y++) //for all frequent itemsets that satisfied the support criteria
+		{
+			vector<vector<int>> subsets;
+			allSubsetsExceptEmpty(newCurrentItemsets[y], subsets);
+			//go through all subsets
+			for (int i = 0; i < subsets.size(); i++)
+			{
+				for (int x = 0; x < subsets.size(); x++)
+				{
+					if (x == i) { continue; } //if it's the same subset
+					else if (subsets[i].size() + subsets[x].size() != newCurrentItemsets[y].size()) { continue; } //if two subsets are smaller in size than a frequent itemset
+					else  //candidate for confidence testing
+					{
+						bool unique = true;
+						for (int k = 0; k < subsets[i].size(); k++) //test if there are any conflicting attributes between subsets
+						{
+							for (int j = 0; j < subsets[x].size(); j++)
+							{
+								if (subsets[i][k] == subsets[x][j]) { unique = false; }
+							}
+						}
+						if (!unique) { break; }
+						if (subsets[i].size() + subsets[x].size() == newCurrentItemsets[y].size())
+						{
+							float support = sup(body, newCurrentItemsets[y]);
+							float confidence = support / sup(body, subsets[i]);
+							if (confidence >= minConfidence)
+							{
+								for (int h = 0; h < subsets[i].size(); h++)
+								{
+									cout << header[subsets[i][h]].name << " <" << header[subsets[i][h]].lowerBound << ", " << header[subsets[i][h]].upperBound << "> ";
+									if (subsets[i].size() > 1 && h != subsets[i].size() - 1) { cout << "&& "; }
+								}
+								cout << " => ";
+								for (int h = 0; h < subsets[x].size(); h++)
+								{
+									cout << header[subsets[x][h]].name << " <" << header[subsets[x][h]].lowerBound << ", " << header[subsets[x][h]].upperBound << "> ";
+									if (subsets[x].size() > 1 && h != subsets[x].size() - 1) { cout << "&& "; }
+								}
+								cout << " with support of " << support << "% and confidence of " << confidence << "%" << endl;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	cout << endl << endl;
 	apriori(header, body, newCurrentItemsets, minSupport, minConfidence, counter, countryData);
 }
 
@@ -319,5 +377,35 @@ void combinations(const vector<vector<int>> & inputVector, vector<int> & tempVec
 	{
 		tempVector[index] = inputVector[i][0];
 		combinations(inputVector, tempVector, i + 1, end, index + 1, combinationSize, newCombinations);
+	}
+}
+float sup(const vector<vector<bool>> & body, const vector<int> & itemset)
+{
+	float sup;
+	int frq = 0;
+	for (int y = 0; y < body.size(); y++)
+	{
+		bool isTrue = true;
+		for (int i = 0; i < itemset.size(); i++)
+		{
+			if (body[y][i] == false) { isTrue = false; break; }
+		}
+		if (isTrue) { frq++; }
+	}
+	sup = float(frq) / body.size();
+	return sup;
+}
+void allSubsetsExceptEmpty(const vector<int> & itemset, vector<vector<int>> & subsets)
+{
+	unsigned int powSetSize = pow(2, itemset.size());
+
+	for (int counter = 1; counter < powSetSize; counter++)
+	{
+		vector<int> tempVec;
+		for (int j = 0; j < itemset.size(); j++)
+		{
+			if (counter & (1 << j)) { tempVec.push_back(itemset[j]); }
+		}
+		subsets.push_back(tempVec);
 	}
 }
