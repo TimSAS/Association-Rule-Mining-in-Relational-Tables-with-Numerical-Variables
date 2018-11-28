@@ -33,7 +33,7 @@ void populateHeader(vector<attributeWithRange> & header, vector<attributeStats> 
 void populateBody(vector<vector<bool>> & body, vector<attributeWithRange> & header, vector<vector<string>> & countryData, const int divider); //works in a hacky way
 
 //association rule learning algorithm:
-void apriori(const vector<attributeWithRange> & header, const vector<vector<bool>> & body, const float minSupport, const float minConfidence);
+void apriori(const vector<attributeWithRange> & header, const vector<vector<bool>> & body, vector<vector<int>> & currentItemsets, const float minSupport, const float minConfidence, int counter);
 
 int main()
 {
@@ -63,7 +63,8 @@ int main()
 	//association rule mining algorithm:
 	const float minSupport = 0.3f; //% of the whole dataset
 	const float minConfidence = 0.5f; //% of records that have X, that also have Y
-	apriori(header, body, minSupport, minConfidence);
+	vector<vector<int>> currentItemsets;
+	apriori(header, body, currentItemsets, minSupport, minConfidence, 0);
 
 	//close file
 	closeFile(ourFile);
@@ -196,7 +197,7 @@ void populateBody(vector<vector<bool>> & body, vector<attributeWithRange> & head
 	}
 }
 
-void apriori(const vector<attributeWithRange> & header, const vector<vector<bool>> & body, const float minSupport, const float minConfidence)
+void apriori(const vector<attributeWithRange> & header, const vector<vector<bool>> & body, vector<vector<int>> & currentItemsets, const float minSupport, const float minConfidence, int counter)
 {
 	//start with single itemsets of size 1 (only one attribute) 
 		//find support for them, and confidence?
@@ -204,15 +205,64 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 	//add one more item to itemsets that are still "in the game"
 		//find support for them and confidence
 		//discard those that are lower than minSupport and confidence
+	//make it recursive!!! =) so much fun =()
+
+	cout << "Level " << counter << endl;
 	int populationSize = body.size();
-	for (int atr = 0; atr < header.size(); atr++)
+	vector<float> support;
+	vector<float> confidence;
+
+	if (counter == 0) //initial "fill-in" of currentItemsets vector
+	{
+		for (int i = 0; i < header.size(); i++)
+		{
+			vector<int> tempVec;
+			tempVec.push_back(i);
+			currentItemsets.push_back(tempVec);
+		}
+	}
+	else //if not initial "run", update the currentItemsets vector
+	{
+	}
+
+	//actual logic
+	for (int atr = 0; atr < currentItemsets.size(); atr++)
 	{
 		int frq = 0;
 		for (int rec = 0; rec < populationSize; rec++)
 		{
-			if (body[rec][atr] == 1) { frq++; }
+			bool isTrue = true;
+			for (int i = 0; i < currentItemsets[atr].size(); i++) //go through attributes in a particular itemset
+			{
+				if (body[rec][currentItemsets[atr][i]] == false) { isTrue = false; }
+			}
+			if (isTrue) { frq++; }
 		}
-		cout << header[atr].name << " " << header[atr].lowerBound << "-" << header[atr].upperBound << "   frq =" << frq << "   support = " << float(frq) / populationSize << endl;
+		for (int i = 0; i < currentItemsets[atr].size(); i++) {
+			cout << header[currentItemsets[atr][i]].name << " " << header[currentItemsets[atr][i]].lowerBound << "-" << header[currentItemsets[atr][i]].upperBound << " ";
+			if (currentItemsets[atr].size() > 1) { cout << " && "; }
+		}
+		cout << "   frq =" << frq << "   support = " << float(frq) / populationSize << endl;
+		support.push_back(float(frq) / populationSize);
+	}
+	cout << endl;
+
+	//end conditions
+	if (counter == 5) { return; }
+	else if (currentItemsets.size() == 0) { return; }
+
+	//prep for next "level" in recursion
+	//update counter:
+	counter++;
+	//prep our currentItemsets vector for next "run" (remove things that are bellow support & confidence) DONT forget about confidence, to do it later
+	vector<vector<int>> newCurrentItemsets;
+	for (int i = 0; i < currentItemsets.size(); i++)
+	{
+		if (support[i] >= minSupport)
+		{
+			newCurrentItemsets.push_back(currentItemsets[i]);
+		}
 	}
 
+	apriori(header, body, newCurrentItemsets, minSupport, minConfidence, counter);
 }
