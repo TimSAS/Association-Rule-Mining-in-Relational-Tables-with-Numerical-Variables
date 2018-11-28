@@ -68,7 +68,7 @@ int main()
 
 	//association rule mining algorithm:
 	const float minSupport = 0.3f; //% of the whole dataset
-	const float minConfidence = 0.0f; //% of records that have X, that also have Y
+	const float minConfidence = 0.5f; //% of records that have X, that also have Y
 	vector<vector<int>> currentItemsets;
 	apriori(header, body, currentItemsets, minSupport, minConfidence, 0, countryData);
 
@@ -388,7 +388,7 @@ float sup(const vector<vector<bool>> & body, const vector<int> & itemset)
 		bool isTrue = true;
 		for (int i = 0; i < itemset.size(); i++)
 		{
-			if (body[y][i] == false) { isTrue = false; break; }
+			if (body[y][itemset[i]] == false) { isTrue = false; break; }
 		}
 		if (isTrue) { frq++; }
 	}
