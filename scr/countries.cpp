@@ -34,6 +34,7 @@ void populateBody(vector<vector<bool>> & body, vector<attributeWithRange> & head
 
 //association rule learning algorithm:
 void apriori(const vector<attributeWithRange> & header, const vector<vector<bool>> & body, vector<vector<int>> & currentItemsets, const float minSupport, const float minConfidence, int counter);
+void combinations(const vector<vector<int>> & inputVector, vector<int> & tempVector, int start, int end, int index, int combinationSize, vector<vector<int>> & newCombinations);
 
 int main()
 {
@@ -50,7 +51,7 @@ int main()
 	//Mapping the Quantitative Associatin Rules Problem into the Boolean Association Rules Problem
 	//first row(first vector): set of <attribute, range>
 	//other rows(second vector): table of 0 or 1s
-	const int divider = 2; //in how many pieces to divide range of a certain attribute
+	const int divider = 5; //in how many pieces to divide range of a certain attribute
 	vector<attributeStats> attributes;
 	vector<attributeWithRange> header;
 	vector<vector<bool>> body;
@@ -199,14 +200,6 @@ void populateBody(vector<vector<bool>> & body, vector<attributeWithRange> & head
 
 void apriori(const vector<attributeWithRange> & header, const vector<vector<bool>> & body, vector<vector<int>> & currentItemsets, const float minSupport, const float minConfidence, int counter)
 {
-	//start with single itemsets of size 1 (only one attribute) 
-		//find support for them, and confidence?
-		//discard those that are lower than minSupport and confidence
-	//add one more item to itemsets that are still "in the game"
-		//find support for them and confidence
-		//discard those that are lower than minSupport and confidence
-	//make it recursive!!! =) so much fun =()
-
 	cout << "Level " << counter << endl;
 	int populationSize = body.size();
 	vector<float> support;
@@ -221,8 +214,20 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 			currentItemsets.push_back(tempVec);
 		}
 	}
-	else //if not initial "run", update the currentItemsets vector
+	else //if not initial "run", update the currentItemsets vector kinda hard... =(
 	{
+		//strategy:
+		//1: get all possible combinations
+		//2: sort vectors 
+		//3: get rid of duplicates
+		vector<int> tempVector;
+		vector<vector<int>> newCombinations;
+		tempVector.resize(counter + 1);
+
+		combinations(currentItemsets, tempVector, 0, currentItemsets.size() - 1, 0, counter + 1, newCombinations);
+		currentItemsets = newCombinations;
+
+		//what left: get rid of duplicates =)
 	}
 
 	//actual logic
@@ -239,17 +244,19 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 			if (isTrue) { frq++; }
 		}
 		for (int i = 0; i < currentItemsets[atr].size(); i++) {
+			if (float(frq) / populationSize < minSupport) { continue; }
 			cout << header[currentItemsets[atr][i]].name << " " << header[currentItemsets[atr][i]].lowerBound << "-" << header[currentItemsets[atr][i]].upperBound << " ";
-			if (currentItemsets[atr].size() > 1) { cout << " && "; }
+			if (currentItemsets[atr].size() > 1 && i != currentItemsets[atr].size() - 1) { cout << " && "; }
 		}
-		cout << "   frq =" << frq << "   support = " << float(frq) / populationSize << endl;
+		if (float(frq) / populationSize >= minSupport) { cout << "   frq =" << frq << "   support = " << float(frq) / populationSize << endl; }
 		support.push_back(float(frq) / populationSize);
 	}
 	cout << endl;
 
 	//end conditions
-	if (counter == 5) { return; }
+	if (counter == 2) { return; }
 	else if (currentItemsets.size() == 0) { return; }
+	else if (counter == header.size()) { return; }
 
 	//prep for next "level" in recursion
 	//update counter:
@@ -265,4 +272,30 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 	}
 
 	apriori(header, body, newCurrentItemsets, minSupport, minConfidence, counter);
+}
+
+void combinations(const vector<vector<int>> & inputVector, vector<int> & tempVector, int start, int end, int index, int combinationSize, vector<vector<int>> & newCombinations)
+{
+	//what left: get rid of duplicates =)
+
+	//current combination is ready
+	if (index == combinationSize)
+	{
+		for (int i = 0; i < combinationSize; i++)
+		{
+			cout << tempVector[i] << " ";
+		}
+		cout << endl;
+		newCombinations.push_back(tempVector);
+		return;
+	}
+
+	//replace index with all possible elements. The condition "end - i + 1 >= r - index"
+	//makes sure that including one element at index will make a combination with remaining 
+	//elements at remaining positions
+	for (int i = start; i <= end && end - i + 1 >= combinationSize - index; i++)
+	{
+		tempVector[index] = inputVector[i][0];
+		combinations(inputVector, tempVector, i + 1, end, index + 1, combinationSize, newCombinations);
+	}
 }
