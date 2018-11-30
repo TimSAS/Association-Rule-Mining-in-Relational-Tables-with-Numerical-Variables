@@ -4,6 +4,7 @@
 #include <fstream>
 #include <map>
 #include <math.h>
+#include <algorithm>
 
 using namespace std;
 
@@ -16,25 +17,25 @@ void populateVector(ifstream & ourFile, vector<vector<string>> & ourData); //wor
 void displayVector(const vector<vector<string>> & ourData); //works
 
 //making a new boolian-based table
-struct attributeWithRange
-{
-	string name;
-	float lowerBound;
-	float upperBound;
-};
+//update to handle multiple types of data
 struct attributeStats
 {
 	string name;
-	float minVal;
-	float maxVal;
+	string type;
+	//numerical stuff
+	float lowerBound;
+	float upperBound;
 	float spread;
+	//categorical
+	vector<string> categories;
+	string category;
 };
-void populateAttributes(vector<attributeStats> & attributes, const vector<vector<string>> & countryData); //works
-void populateHeader(vector<attributeWithRange> & header, vector<attributeStats> & attributes, const int divider); //works
-void populateBody(vector<vector<bool>> & body, vector<attributeWithRange> & header, vector<vector<string>> & countryData, const int divider); //works in a hacky way
+void populateAttributes(vector<attributeStats> & attributes, const vector<vector<string>> & countryData, const vector<bool> & isNumerical); //works
+void populateHeader(vector<attributeStats> & header, vector<attributeStats> & attributes, const int divider, const vector<bool> & isNumerical); //works
+void populateBody(vector<vector<bool>> & body, vector<attributeStats> & header, vector<vector<string>> & countryData, const int divider); //works in a hacky way
 
 //association rule learning algorithm:
-void apriori(const vector<attributeWithRange> & header, const vector<vector<bool>> & body, vector<vector<int>> & currentItemsets, const float minSupport, const float minConfidence, int counter, const vector<vector<string>> & countryData);
+void apriori(const vector<attributeStats> & header, const vector<vector<bool>> & body, vector<vector<int>> & currentItemsets, const float minSupport, const float minConfidence, int counter, const vector<vector<string>> & countryData);
 void combinations(const vector<vector<int>> & inputVector, vector<int> & tempVector, int start, int end, int index, int combinationSize, vector<vector<int>> & newCombinations);
 //for confidence calculations:"
 float sup(const vector<vector<bool>> & body, const vector<int> & itemset);
@@ -46,7 +47,7 @@ int main()
 	//opening our file
 	ifstream ourFile;
 	//string fileName = "country_stats.csv";
-	string fileName = "music_project_numerical.csv";
+	string fileName = "music_project_og.csv";
 	openFile(fileName, ourFile);
 
 	//getting the data into a 2-dimentional vector:
@@ -59,11 +60,12 @@ int main()
 	//other rows(second vector): table of 0 or 1s
 	const int divider = 6; //in how many pieces to divide range of a certain attribute
 	vector<attributeStats> attributes;
-	vector<attributeWithRange> header;
+	vector<attributeStats> header;
 	vector<vector<bool>> body;
-	populateAttributes(attributes, countryData);
-	populateHeader(header, attributes, divider);
-	populateBody(body, header, countryData, divider);
+	const vector<bool> isNumerical = { 0, 1, 0, 0, 1, 1 };
+	populateAttributes(attributes, countryData, isNumerical);
+	populateHeader(header, attributes, divider, isNumerical);
+	/*populateBody(body, header, countryData, divider); //still needs an update
 
 
 
@@ -71,9 +73,9 @@ int main()
 	const float minSupport = 0.3f; //% of the whole dataset
 	const float minConfidence = 0.5f; //% of records that have X, that also have Y
 	vector<vector<int>> currentItemsets;
-	cout << endl << "Divider for numerical attributes: " << divider << endl << "Minimal Support: " << minSupport << endl << "Minimal Confidense: " << minConfidence << endl << endl;
-	apriori(header, body, currentItemsets, minSupport, minConfidence, 0, countryData);
-
+	cout << endl << "Divider for numerical attributes: " << divider << endl<< "Minimal Support: " << minSupport << endl << "Minimal Confidense: " << minConfidence << endl << endl;
+	apriori(header, body, currentItemsets, minSupport, minConfidence, 0, countryData); //still needs an update
+	*/
 	//close file
 	closeFile(ourFile);
 	std::cin.get();
@@ -135,47 +137,95 @@ void displayVector(const vector<vector<string>> & ourData)
 	}
 }
 
-void populateAttributes(vector<attributeStats> & attributes, const vector<vector<string>> & countryData)
+void populateAttributes(vector<attributeStats> & attributes, const vector<vector<string>> & countryData, const vector<bool> & isNumerical)
 {
 	for (int x = 0; x < countryData[0].size(); x++)
 	{
 		attributeStats stat;
 		stat.name = countryData[0][x];
-		for (int y = 1; y < countryData.size(); y++)
-		{
-			if (y == 1)
+		//add stat type things here
+		if (isNumerical[x] == true) {
+			stat.type = "numerical";
+			for (int y = 1; y < countryData.size(); y++)
 			{
-				stat.minVal = stof(countryData[y][x]);
-				stat.maxVal = stof(countryData[y][x]);
+				if (y == 1)
+				{
+					stat.lowerBound = stof(countryData[y][x]);
+					stat.upperBound = stof(countryData[y][x]);
+				}
+				else if (stof(countryData[y][x]) < stat.lowerBound) { stat.lowerBound = stof(countryData[y][x]); }
+				else if (stof(countryData[y][x]) > stat.upperBound) { stat.upperBound = stof(countryData[y][x]); }
 			}
-			else if (stof(countryData[y][x]) < stat.minVal) { stat.minVal = stof(countryData[y][x]); }
-			else if (stof(countryData[y][x]) > stat.maxVal) { stat.maxVal = stof(countryData[y][x]); }
+			stat.spread = stat.upperBound - stat.lowerBound;
 		}
-		stat.spread = stat.maxVal - stat.minVal;
+		else //if it's a categorical value
+		{
+			stat.type = "categorical";
+			//populate the categories here
+			vector<string> allCategories;
+			for (int y = 1; y < countryData.size(); y++)
+			{
+				bool isContained = false;
+				for (int q = 0; q < stat.categories.size(); q++)
+				{
+					if (countryData[y][x] == stat.categories[q]) { isContained = true; }
+				}
+				if (!isContained) { stat.categories.push_back(countryData[y][x]); } //if the item not yet in list of categories for the attribute
+			}
+			if (!stat.categories.empty()) { sort(stat.categories.begin(), stat.categories.end()); }
+		}
 		attributes.push_back(stat);
 		//for debugging
-		//cout << "Name: " << stat.name << "   Min:" << stat.minVal << "   Max:" << stat.maxVal << "   Spread:" << stat.spread << endl;
+		/*if (stat.type == "numerical") {
+			cout << "Name: " << stat.name << "   Min:" << stat.lowerBound << "   Max:" << stat.upperBound << "   Spread:" << stat.spread << endl;
+		}
+		else {
+			cout << "Name: " << stat.name << " Categories: ";
+			for (int z = 0; z < stat.categories.size(); z++)
+			{
+				if (z != stat.categories.size() - 1) { cout << stat.categories[z] << ", "; }
+				else { cout << stat.categories[z] << "  "; }
+			}
+			cout << "  (" << stat.categories.size() << " categories)" << endl;
+		}*/
 	}
 }
-void populateHeader(vector<attributeWithRange> & header, vector<attributeStats> & attributes, const int divider)
+void populateHeader(vector<attributeStats> & header, vector<attributeStats> & attributes, const int divider, const vector<bool> & isNumerical)
 {
-	//cout << "Attributes, with divider of " << divider << ":" << endl;
+	cout << "Divider of " << divider << " for numerical variables." << endl;
 	for (int i = 0; i < attributes.size(); i++)
 	{
-		for (int d = 0; d < divider; d++)
+		if (attributes[i].type == "numerical") {
+			for (int d = 0; d < divider; d++)
+			{
+				attributeStats atr;
+				atr.name = attributes[i].name;
+				atr.type = "numerical";
+				atr.lowerBound = attributes[i].lowerBound + (attributes[i].spread / divider * d);
+				atr.upperBound = atr.lowerBound + (attributes[i].spread / divider); //rounding error might be because of this
+				header.push_back(atr);
+				//debugging
+				cout << "Name: " << atr.name << "   Range: " << atr.lowerBound << " - " << atr.upperBound << endl;
+			}
+		}
+		else
 		{
-			attributeWithRange atr;
-			atr.name = attributes[i].name;
-			atr.lowerBound = attributes[i].minVal + (attributes[i].spread / divider * d);
-			atr.upperBound = atr.lowerBound + (attributes[i].spread / divider); //rounding error might be because of this
-			header.push_back(atr);
-			//debugging
-			//cout << "Name: " << atr.name << "   Range: " << atr.lowerBound << " - " << atr.upperBound << endl;
+			//create an attribute for each discrete category, from original attribute
+			for (int x = 0; x < attributes[i].categories.size(); x++)
+			{
+				attributeStats atr;
+				atr.name = attributes[i].name;
+				atr.type = "categorical";
+				atr.category = attributes[i].categories[x];
+				header.push_back(atr);
+				//debugging
+				cout << "Name: " << atr.name << "  Category: " << atr.category << endl;
+			}
 		}
 	}
 	cout << endl << endl;
 }
-void populateBody(vector<vector<bool>> & body, vector<attributeWithRange> & header, vector<vector<string>> & countryData, const int divider)
+void populateBody(vector<vector<bool>> & body, vector<attributeStats> & header, vector<vector<string>> & countryData, const int divider)
 {
 	for (int y = 1; y < countryData.size(); y++) //all records in database, start from 1 since 0 is header
 	{
@@ -206,7 +256,7 @@ void populateBody(vector<vector<bool>> & body, vector<attributeWithRange> & head
 	}
 }
 
-void apriori(const vector<attributeWithRange> & header, const vector<vector<bool>> & body, vector<vector<int>> & currentItemsets, const float minSupport, const float minConfidence, int counter, const vector<vector<string>> & countryData)
+void apriori(const vector<attributeStats> & header, const vector<vector<bool>> & body, vector<vector<int>> & currentItemsets, const float minSupport, const float minConfidence, int counter, const vector<vector<string>> & countryData)
 {
 	cout << "Level " << counter << endl;
 	int populationSize = body.size();
