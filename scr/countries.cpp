@@ -58,24 +58,24 @@ int main()
 	//Mapping the Quantitative Associatin Rules Problem into the Boolean Association Rules Problem
 	//first row(first vector): set of <attribute, range>
 	//other rows(second vector): table of 0 or 1s
-	const int divider = 6; //in how many pieces to divide range of a certain attribute
+	const int divider = 5; //in how many pieces to divide range of a certain attribute
 	vector<attributeStats> attributes;
 	vector<attributeStats> header;
 	vector<vector<bool>> body;
 	const vector<bool> isNumerical = { 0, 1, 0, 0, 1, 1 };
 	populateAttributes(attributes, countryData, isNumerical);
 	populateHeader(header, attributes, divider, isNumerical);
-	/*populateBody(body, header, countryData, divider); //still needs an update
+	populateBody(body, header, countryData, divider); //still needs an update
 
 
 
 	//association rule mining algorithm:
 	const float minSupport = 0.3f; //% of the whole dataset
-	const float minConfidence = 0.5f; //% of records that have X, that also have Y
+	const float minConfidence = 0.6f; //% of records that have X, that also have Y
 	vector<vector<int>> currentItemsets;
-	cout << endl << "Divider for numerical attributes: " << divider << endl<< "Minimal Support: " << minSupport << endl << "Minimal Confidense: " << minConfidence << endl << endl;
-	apriori(header, body, currentItemsets, minSupport, minConfidence, 0, countryData); //still needs an update
-	*/
+	cout << endl << "Divider for numerical attributes: " << divider << endl << "Minimal Support: " << minSupport << endl << "Minimal Confidense: " << minConfidence << endl << endl;
+	apriori(header, body, currentItemsets, minSupport, minConfidence, 0, countryData); //updated
+
 	//close file
 	closeFile(ourFile);
 	std::cin.get();
@@ -188,7 +188,9 @@ void populateAttributes(vector<attributeStats> & attributes, const vector<vector
 			}
 			cout << "  (" << stat.categories.size() << " categories)" << endl;
 		}*/
+
 	}
+	cout << "Attributes created!" << endl;
 }
 void populateHeader(vector<attributeStats> & header, vector<attributeStats> & attributes, const int divider, const vector<bool> & isNumerical)
 {
@@ -205,7 +207,7 @@ void populateHeader(vector<attributeStats> & header, vector<attributeStats> & at
 				atr.upperBound = atr.lowerBound + (attributes[i].spread / divider); //rounding error might be because of this
 				header.push_back(atr);
 				//debugging
-				cout << "Name: " << atr.name << "   Range: " << atr.lowerBound << " - " << atr.upperBound << endl;
+				//cout << "Name: " << atr.name << "   Range: " << atr.lowerBound << " - " << atr.upperBound << endl;
 			}
 		}
 		else
@@ -219,41 +221,54 @@ void populateHeader(vector<attributeStats> & header, vector<attributeStats> & at
 				atr.category = attributes[i].categories[x];
 				header.push_back(atr);
 				//debugging
-				cout << "Name: " << atr.name << "  Category: " << atr.category << endl;
+				//cout << "Name: " << atr.name << "  Category: " << atr.category << endl;
 			}
 		}
 	}
-	cout << endl << endl;
+	//cout << endl << endl;
+	cout << "Header populated!" << endl;
 }
 void populateBody(vector<vector<bool>> & body, vector<attributeStats> & header, vector<vector<string>> & countryData, const int divider)
 {
 	for (int y = 1; y < countryData.size(); y++) //all records in database, start from 1 since 0 is header
 	{
 		vector<bool> tempVec;
-		int count = 0;
+		//int trueCount = 0;
 		for (int x = 0; x < countryData[y].size(); x++) //horizontal size of original database
 		{
-			for (int z = 0; z < divider; z++) //how many divisions do we apply to our attributes
+			for (int i = 0; i < header.size(); i++) //for all of our attributes, that were "sliced", either numerical or not
 			{
-				float num = stof(countryData[y][x]);
-				if (num >= header[x * divider + z].lowerBound && num <= header[x * divider + z].upperBound + 0.0001) //TODO, fix the bug with rounding or something 
-				{
-					tempVec.push_back(true);
-					count++;
+				if (countryData[0][x] == header[i].name) {
+					if (header[i].type == "numerical") //if a numerical attribute
+					{
+						float num = stof(countryData[y][x]);
+						if (num >= header[i].lowerBound && num <= header[i].upperBound + 0.0001)
+						{
+							tempVec.push_back(true);
+							//trueCount++;
+						}
+						else
+						{
+							tempVec.push_back(false);
+						}
+					}
+					else //categorical attribute
+					{
+						if (countryData[y][x] == header[i].category) {
+							tempVec.push_back(true);
+							//trueCount++; 
+						}
+						else { tempVec.push_back(false); }
+					}
 				}
-				else
-				{
-					//cout << num << " " << header[x * divider + z].lowerBound << " " << header[x * divider + z].upperBound << endl;
-
-					tempVec.push_back(false);
-				}
-				//cout << tempVec[x * divider + z] << " ";
 			}
+
 		}
 		body.push_back(tempVec);
-		//cout << count; //for checking number of true values should be equal to number of attributes
+		//cout << "trueCount: " << trueCount; //for checking number of true values should be equal to number of attributes
 		//cout << endl;
 	}
+	cout << "Body populated!" << endl;
 }
 
 void apriori(const vector<attributeStats> & header, const vector<vector<bool>> & body, vector<vector<int>> & currentItemsets, const float minSupport, const float minConfidence, int counter, const vector<vector<string>> & countryData)
@@ -333,7 +348,14 @@ void apriori(const vector<attributeStats> & header, const vector<vector<bool>> &
 		}
 		for (int i = 0; i < currentItemsets[atr].size(); i++) {
 			if (float(frq) / populationSize < minSupport) { continue; }
-			cout << header[currentItemsets[atr][i]].name << " <" << header[currentItemsets[atr][i]].lowerBound << ", " << header[currentItemsets[atr][i]].upperBound << ">  ";
+			//add display option for numerical and categorical
+			if (header[currentItemsets[atr][i]].type == "numerical") {
+				cout << header[currentItemsets[atr][i]].name << " <" << header[currentItemsets[atr][i]].lowerBound << ", " << header[currentItemsets[atr][i]].upperBound << ">  ";
+			}
+			else
+			{
+				cout << header[currentItemsets[atr][i]].name << " <" << header[currentItemsets[atr][i]].category << ">  ";
+			}
 			if (currentItemsets[atr].size() > 1 && i != currentItemsets[atr].size() - 1) { cout << " && "; }
 		}
 		if (float(frq) / populationSize >= minSupport) {
@@ -396,13 +418,25 @@ void apriori(const vector<attributeStats> & header, const vector<vector<bool>> &
 								confCounter++;
 								for (int h = 0; h < subsets[i].size(); h++)
 								{
-									cout << header[subsets[i][h]].name << " <" << header[subsets[i][h]].lowerBound << ", " << header[subsets[i][h]].upperBound << "> ";
+									if (header[subsets[i][h]].type == "numerical") {
+										cout << header[subsets[i][h]].name << " <" << header[subsets[i][h]].lowerBound << ", " << header[subsets[i][h]].upperBound << "> ";
+									}
+									else
+									{
+										cout << header[subsets[i][h]].name << " <" << header[subsets[i][h]].category << "> ";
+									}
 									if (subsets[i].size() > 1 && h != subsets[i].size() - 1) { cout << "&& "; }
 								}
 								cout << " => ";
 								for (int h = 0; h < subsets[x].size(); h++)
 								{
-									cout << header[subsets[x][h]].name << " <" << header[subsets[x][h]].lowerBound << ", " << header[subsets[x][h]].upperBound << "> ";
+									if (header[subsets[x][h]].type == "numerical") {
+										cout << header[subsets[x][h]].name << " <" << header[subsets[x][h]].lowerBound << ", " << header[subsets[x][h]].upperBound << "> ";
+									}
+									else
+									{
+										cout << header[subsets[x][h]].name << " <" << header[subsets[x][h]].category << "> ";
+									}
 									if (subsets[x].size() > 1 && h != subsets[x].size() - 1) { cout << "&& "; }
 								}
 								cout << "   with support of " << support << " and confidence of " << confidence << "" << endl;
