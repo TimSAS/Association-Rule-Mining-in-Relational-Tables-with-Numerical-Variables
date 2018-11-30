@@ -209,7 +209,6 @@ void populateBody(vector<vector<bool>> & body, vector<attributeWithRange> & head
 void apriori(const vector<attributeWithRange> & header, const vector<vector<bool>> & body, vector<vector<int>> & currentItemsets, const float minSupport, const float minConfidence, int counter, const vector<vector<string>> & countryData)
 {
 	cout << "Level " << counter << endl;
-	cout << "-----Frequent itemsets that satisfy the support requirement of " << minSupport << "-----" << endl;
 	int populationSize = body.size();
 	vector<float> support;
 
@@ -277,7 +276,11 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 			}
 			if (isTrue) { frq++; }
 		}
-		if (float(frq) / populationSize >= minSupport) { cout << supCount << ". "; }
+		if (float(frq) / populationSize >= minSupport)
+		{
+			if (supCount == 1) { cout << "-----Frequent itemsets that satisfy the support requirement of " << minSupport << "-----" << endl; }
+			cout << supCount << ". ";
+		}
 		for (int i = 0; i < currentItemsets[atr].size(); i++) {
 			if (float(frq) / populationSize < minSupport) { continue; }
 			cout << header[currentItemsets[atr][i]].name << " <" << header[currentItemsets[atr][i]].lowerBound << ", " << header[currentItemsets[atr][i]].upperBound << ">  ";
@@ -310,7 +313,7 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 	//association rule finding 
 	int confCounter = 1;
 	if (counter != 0) {
-		cout << "-----Association rules-----" << endl;
+		cout << "-----Association rules that satisfy the confidence requirement of " << minConfidence << "-----" << endl;
 		for (int y = 0; y < newCurrentItemsets.size(); y++) //for all frequent itemsets that satisfied the support criteria
 		{
 			vector<vector<int>> subsets;
