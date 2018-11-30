@@ -45,7 +45,8 @@ int main()
 {
 	//opening our file
 	ifstream ourFile;
-	string fileName = "country_stats.csv";
+	//string fileName = "country_stats.csv";
+	string fileName = "music_project_numerical.csv";
 	openFile(fileName, ourFile);
 
 	//getting the data into a 2-dimentional vector:
@@ -56,7 +57,7 @@ int main()
 	//Mapping the Quantitative Associatin Rules Problem into the Boolean Association Rules Problem
 	//first row(first vector): set of <attribute, range>
 	//other rows(second vector): table of 0 or 1s
-	const int divider = 5; //in how many pieces to divide range of a certain attribute
+	const int divider = 6; //in how many pieces to divide range of a certain attribute
 	vector<attributeStats> attributes;
 	vector<attributeWithRange> header;
 	vector<vector<bool>> body;
@@ -67,9 +68,10 @@ int main()
 
 
 	//association rule mining algorithm:
-	const float minSupport = 0.4f; //% of the whole dataset
+	const float minSupport = 0.3f; //% of the whole dataset
 	const float minConfidence = 0.5f; //% of records that have X, that also have Y
 	vector<vector<int>> currentItemsets;
+	cout << endl << "Divider for numerical attributes: " << divider << endl << "Minimal Support: " << minSupport << endl << "Minimal Confidense: " << minConfidence << endl << endl;
 	apriori(header, body, currentItemsets, minSupport, minConfidence, 0, countryData);
 
 	//close file
@@ -157,7 +159,7 @@ void populateAttributes(vector<attributeStats> & attributes, const vector<vector
 }
 void populateHeader(vector<attributeWithRange> & header, vector<attributeStats> & attributes, const int divider)
 {
-	cout << "Attributes, with divider of " << divider << ":" << endl;
+	//cout << "Attributes, with divider of " << divider << ":" << endl;
 	for (int i = 0; i < attributes.size(); i++)
 	{
 		for (int d = 0; d < divider; d++)
@@ -168,7 +170,7 @@ void populateHeader(vector<attributeWithRange> & header, vector<attributeStats> 
 			atr.upperBound = atr.lowerBound + (attributes[i].spread / divider); //rounding error might be because of this
 			header.push_back(atr);
 			//debugging
-			cout << "Name: " << atr.name << "   Range: " << atr.lowerBound << " - " << atr.upperBound << endl;
+			//cout << "Name: " << atr.name << "   Range: " << atr.lowerBound << " - " << atr.upperBound << endl;
 		}
 	}
 	cout << endl << endl;
@@ -261,9 +263,11 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 
 
 	//actual logic
+	int supCount = 1;
 	for (int atr = 0; atr < currentItemsets.size(); atr++)
 	{
 		int frq = 0;
+
 		for (int rec = 0; rec < populationSize; rec++)
 		{
 			bool isTrue = true;
@@ -273,12 +277,16 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 			}
 			if (isTrue) { frq++; }
 		}
+		if (float(frq) / populationSize >= minSupport) { cout << supCount << ". "; }
 		for (int i = 0; i < currentItemsets[atr].size(); i++) {
 			if (float(frq) / populationSize < minSupport) { continue; }
 			cout << header[currentItemsets[atr][i]].name << " <" << header[currentItemsets[atr][i]].lowerBound << ", " << header[currentItemsets[atr][i]].upperBound << ">  ";
 			if (currentItemsets[atr].size() > 1 && i != currentItemsets[atr].size() - 1) { cout << " && "; }
 		}
-		if (float(frq) / populationSize >= minSupport) { cout << endl << "frq = " << frq << "   support = " << float(frq) / populationSize << endl; }
+		if (float(frq) / populationSize >= minSupport) {
+			cout << "   frq = " << frq << "   support = " << float(frq) / populationSize << endl;
+			supCount++;
+		}
 		//cout << "   frq =" << frq << "   support = " << float(frq) / populationSize << endl;
 		support.push_back(float(frq) / populationSize);
 	}
@@ -300,6 +308,7 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 	}
 	cout << endl;
 	//association rule finding 
+	int confCounter = 1;
 	if (counter != 0) {
 		cout << "-----Association rules-----" << endl;
 		for (int y = 0; y < newCurrentItemsets.size(); y++) //for all frequent itemsets that satisfied the support criteria
@@ -330,6 +339,8 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 							float confidence = support / sup(body, subsets[i]);
 							if (confidence >= minConfidence)
 							{
+								cout << confCounter << ". ";
+								confCounter++;
 								for (int h = 0; h < subsets[i].size(); h++)
 								{
 									cout << header[subsets[i][h]].name << " <" << header[subsets[i][h]].lowerBound << ", " << header[subsets[i][h]].upperBound << "> ";
@@ -341,7 +352,7 @@ void apriori(const vector<attributeWithRange> & header, const vector<vector<bool
 									cout << header[subsets[x][h]].name << " <" << header[subsets[x][h]].lowerBound << ", " << header[subsets[x][h]].upperBound << "> ";
 									if (subsets[x].size() > 1 && h != subsets[x].size() - 1) { cout << "&& "; }
 								}
-								cout << endl << "   with support of " << support << " and confidence of " << confidence << "" << endl;
+								cout << "   with support of " << support << " and confidence of " << confidence << "" << endl;
 							}
 						}
 					}
